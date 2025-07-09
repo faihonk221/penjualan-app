@@ -9,6 +9,11 @@ class Transaksi extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['tanggal', 'total_harga'];
+    protected $fillable = ['tanggal', 'total_harga', 'produk_id', 'jumlah'];
+
+    public function produk()
+    {
+        return $this->belongsTo(\App\Models\Produk::class);
+    }
 }
 

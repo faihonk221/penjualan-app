@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Produk;
 use App\Models\Transaksi;
-use App\Models\DetailTransaksi;
+use Carbon\Carbon;
 
 class TransaksiController extends Controller
 {
@@ -17,25 +17,32 @@ class TransaksiController extends Controller
 
     public function store(Request $request)
     {
+        // Validasi input
         $request->validate([
-            'produk_id' => 'required',
-            'qty' => 'required|integer|min:1'
+            'produk_id' => 'required|exists:produks,id',
+            'jumlah' => 'required|integer|min:1',
         ]);
 
         $produk = Produk::findOrFail($request->produk_id);
-        $subtotal = $produk->harga * $request->qty;
 
-        $transaksi = Transaksi::create([
-            'tanggal' => now(),
-            'total_harga' => $subtotal
-        ]);
+        // Cek stok cukup
+        if ($produk->stok < $request->jumlah) {
+            return back()->with('error', 'Stok tidak mencukupi.');
+        }
 
-        DetailTransaksi::create([
-            'transaksi_id' => $transaksi->id,
+        // Hitung total harga
+        $total = $produk->harga * $request->jumlah;
+
+        // Kurangi stok
+        $produk->stok -= $request->jumlah;
+        $produk->save();
+
+        // Simpan transaksi
+        Transaksi::create([
             'produk_id' => $produk->id,
-            'qty' => $request->qty,
-            'harga_satuan' => $produk->harga,
-            'subtotal' => $subtotal
+            'jumlah' => $request->jumlah,
+            'tanggal' => Carbon::now()->toDateString(),
+            'total_harga' => $total,
         ]);
 
         return redirect('/transaksi')->with('success', 'Transaksi berhasil disimpan.');
